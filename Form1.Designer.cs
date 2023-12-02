@@ -43,6 +43,8 @@
             this.Editor_Menustrp = new System.Windows.Forms.ToolStripMenuItem();
             this.Lekerdezes_Menustrp = new System.Windows.Forms.ToolStripMenuItem();
             this.label1 = new System.Windows.Forms.Label();
+            this.adatbázisToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.loginToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
@@ -144,7 +146,8 @@
             // menuStrip1
             // 
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.fileToolStripMenuItem});
+            this.fileToolStripMenuItem,
+            this.adatbázisToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.Size = new System.Drawing.Size(1184, 24);
@@ -183,6 +186,21 @@
             this.label1.Size = new System.Drawing.Size(87, 13);
             this.label1.TabIndex = 12;
             this.label1.Text = "Válassz terméket";
+            // 
+            // adatbázisToolStripMenuItem
+            // 
+            this.adatbázisToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.loginToolStripMenuItem});
+            this.adatbázisToolStripMenuItem.Name = "adatbázisToolStripMenuItem";
+            this.adatbázisToolStripMenuItem.Size = new System.Drawing.Size(70, 20);
+            this.adatbázisToolStripMenuItem.Text = "Adatbázis";
+            // 
+            // loginToolStripMenuItem
+            // 
+            this.loginToolStripMenuItem.Name = "loginToolStripMenuItem";
+            this.loginToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.loginToolStripMenuItem.Text = "Csatlakozás";
+            this.loginToolStripMenuItem.Click += new System.EventHandler(this.loginToolStripMenuItem_Click);
             // 
             // IMS_MainMenu
             // 
@@ -232,6 +250,8 @@
         private System.Windows.Forms.ToolStripMenuItem Editor_Menustrp;
         private System.Windows.Forms.ToolStripMenuItem Lekerdezes_Menustrp;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.ToolStripMenuItem adatbázisToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem loginToolStripMenuItem;
     }
 }
 

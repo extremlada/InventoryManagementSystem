@@ -1,25 +1,22 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using MySql.Data.MySqlClient;
+using System;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Drawing.Text;
 using System.Windows.Forms;
-using MySql.Data.MySqlClient;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace InventoryManagementSystem
 {
     public partial class IMS_MainMenu : Form
     {
-        private MySqlConnection conn;
         private string server;
         private string database;
         private string uid;
         private string password;
+        private DatabaseLogic DatabaseL;
+        private DataTable dt;
+
+
+
 
         public IMS_MainMenu()
         {
@@ -31,12 +28,16 @@ namespace InventoryManagementSystem
             string connString;
             connString = $"SERVER={server};DATABASE={database};UID={uid};PASSWORD={password};convert zero datetime=True";
 
-            conn = new MySqlConnection(connString);
-    
+
+            DatabaseL = new DatabaseLogic(connString);
+
+
+
 
             InitializeComponent();
             PopulateComboBox();
         }
+
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -54,11 +55,23 @@ namespace InventoryManagementSystem
             string termek_ar = textBox3.Text;
             string darab_szam = textBox2.Text;
 
+
             MessageBox.Show(termek_nev + " " + darab_szam + " db " + termek_ar + "Ft");
 
-            if (termek(termek_nev))
+            if (termek(termek_nev, termek_ar, darab_szam))
             {
                 MessageBox.Show("minden fel lett töltve");
+
+                // Add the new item to the DataTable
+                DataRow newRow = dt.NewRow();
+                newRow["termek_nev"] = termek_nev;
+                dt.Rows.Add(newRow);
+
+                // Refresh the ComboBox
+                comboBox1.DataSource = null;
+                comboBox1.DataSource = dt;
+                comboBox1.DisplayMember = "termek_nev";
+                comboBox1.ValueMember = "termek_nev";
             }
             else
             {
@@ -66,158 +79,61 @@ namespace InventoryManagementSystem
             }
 
 
-            if (termek_mozgas(darab_szam, termek_ar))
-            {
-                MessageBox.Show("minden is fel lett töltve");
-            }
-            else
-            {
-                MessageBox.Show("valami rosszul lett be víve");
-            }
-            
         }
 
-        public bool termek (string termek_nev)
+        public bool termek(string termek_nev, string termek_ar, string darab_szam)
         {
-            {
-                // Check if the item already exists
-                string checkQuery = "SELECT COUNT(*) FROM termek WHERE termek_nev = @termek_nev;";
-                int count = 0;
-
-                try
-                {
-                    if (OpenConnection())
-                    {
-                        using (MySqlCommand checkCmd = new MySqlCommand(checkQuery, conn))
-                        {
-                            checkCmd.Parameters.AddWithValue("@termek_nev", termek_nev);
-                            count = Convert.ToInt32(checkCmd.ExecuteScalar());
-                        }
-                    }
-                    else
-                    {
-                        conn.Close();
-                        return false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    conn.Close();
-                    return false;
-                }
-
-                // If the item already exists, return false
-                if (count > 0)
-                {
-;                  
-                }                
-                
-                // If the item doesn't exist, perform the INSERT
-                string insertQuery = "INSERT INTO termek (termek_nev) VALUES (@termek_nev);";
-                try
-                {
-                    using (MySqlCommand cmd = new MySqlCommand(insertQuery, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@termek_nev", termek_nev);
-
-                        try
-                        {
-                            cmd.ExecuteNonQuery();
-
-                            string getTermekIdQuery = "SELECT termek_id FROM termek WHERE termek_nev = @termek_nev;";
-                            MySqlCommand getTermekIdCmd = new MySqlCommand(getTermekIdQuery, conn);
-                            getTermekIdCmd.Parameters.AddWithValue("@termek_nev", termek_nev);
-                            int termekId = Convert.ToInt32(getTermekIdCmd.ExecuteScalar());
-
-                            string forwardToTermekMozgasQuery = "INSERT INTO termek_mozgas (termek_id) VALUES (@termek_id);";
-                            MySqlCommand forwardCmd = new MySqlCommand(forwardToTermekMozgasQuery, conn);
-                            forwardCmd.Parameters.AddWithValue("@termek_id", termekId);
-                            forwardCmd.ExecuteNonQuery();
-                            return true;
-                        }
-                        catch (Exception x)
-                        {
-                            return false;
-                        }
-                    }
-                }
-                catch (Exception x)
-                {
-                    return false;
-                }
-                finally
-                {
-                    conn.Close();
-                }
-            }
-
-        }
-        public bool termek_mozgas(string darab_szam, string termek_ar)
-        {
-
-            
-            string query = $"INSERT INTO termek_mozgas (termek_darabszam, bevet_eladas, datum) VALUES ('{darab_szam}', '{termek_ar}', NOW());";
             try
             {
-                if (OpenConnection())
+                if (!DatabaseL.OpenConnection())
                 {
-                    MySqlCommand cmd = new MySqlCommand(query, conn);
-
-                    try
-                    {
-                        cmd.ExecuteNonQuery();
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        return false;
-                    }
-                }
-                else
-                {
-                    conn.Close();
+                    MessageBox.Show("Failed to open connection");
                     return false;
                 }
+
+                int count = DatabaseL.CheckIfTermekExists(termek_nev);
+                if (count > 0)
+                {
+                    MessageBox.Show("A termék már létezik az adatbázisban");
+                    return false;
+                }
+
+                int termekId = DatabaseL.InsertIntoTermekDatabase(termek_nev, darab_szam, termek_ar);
+                if (termekId == -1)
+                {
+                    MessageBox.Show("Hiba történt az elem kezelése közben, nem lehet az adatbázisba fel venni az elemet");
+                    return false;
+                }
+
+                return DatabaseL.InsertIntoTermek_mozgasDataTable(darab_szam, termek_ar, termekId);
             }
             catch (Exception ex)
             {
-                conn.Close();
+                MessageBox.Show($"Exception in termek: {ex.Message}");
                 return false;
             }
+            finally
+            {
+                DatabaseL.CloseConnection();
+            }
+            
+
         }
 
-        private bool OpenConnection()
-        {
-            try
-            {
-                conn.Open();
-                return true;
-            }
-            catch (MySqlException ex)
-            {
-                switch (ex.Number)
-                {
-                    case 0:
-                        MessageBox.Show("Connection to server failed");
-                        break;
-                }
-                return false;
-            }
-        }
 
         private void AdatokLekerese_Click(object sender, EventArgs e)
         {
             string selectedTermekNev = comboBox1.SelectedValue?.ToString();
-            string query = "SELECT termek.termek_id, `termek_nev`, `termek_darabszam`, `bevet_eladas`, `datum` " +
-                   "FROM `termek_mozgas` " +
-                   "INNER JOIN termek ON termek.termek_id = termek_mozgas.termek_id ";
+            string query = "SELECT termek.termek_id, `termek_nev`, `termek_darabszam`, `bevet_elada`, `datum` " +
+                   "FROM `termekek_mozgas` " +
+                   "INNER JOIN termek ON termek.termek_id = termekek_mozgas.termek_id ";
 
             if (!string.IsNullOrEmpty(selectedTermekNev) && selectedTermekNev != "minden")
             {
                 query += $"WHERE termek.termek_nev = '{selectedTermekNev}' ";
             }
 
-            MySqlDataAdapter da = new MySqlDataAdapter(query, conn);
+            MySqlDataAdapter da = new MySqlDataAdapter(query, DatabaseL.Connection);
             DataSet ds = new DataSet();
 
 
@@ -229,26 +145,37 @@ namespace InventoryManagementSystem
             }
             catch (Exception ex)
             {
-                // Handle exception
+                MessageBox.Show($"Adat tábla lekérése közben hiba történt: {ex.Message}");
             }
         }
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            
+
+        }
+
+
+        private void menuStrip1_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
+        {
+
+        }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
         }
         private void PopulateComboBox()
         {
             try
             {
-                if (OpenConnection())
+                if (DatabaseL.OpenConnection())
                 {
                     string query = "SELECT termek_nev FROM termek;";
-                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    MySqlCommand cmd = new MySqlCommand(query, DatabaseL.Connection);
 
                     using (MySqlDataAdapter adapter = new MySqlDataAdapter(cmd))
                     {
-                        DataTable dt = new DataTable();
+                        dt = new DataTable();
                         adapter.Fill(dt);
                         DataRow everythingRow = dt.NewRow();
                         everythingRow["termek_nev"] = "minden";
@@ -263,27 +190,17 @@ namespace InventoryManagementSystem
                 }
                 else
                 {
-                    // Handle connection failure
+                    MessageBox.Show("something went wrong");
                 }
             }
-            catch (Exception ex)
+            catch (MySqlException ex)
             {
-                // Handle exception
+                MessageBox.Show($"Connection failed: {ex.Message}");
             }
             finally
             {
-                conn.Close();
+                DatabaseL.CloseConnection();
             }
-        }
-
-        private void menuStrip1_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
-        {
-
-        }
-
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
         }
 
         private void editorToolStripMenuItem_Click(object sender, EventArgs e)
@@ -312,6 +229,12 @@ namespace InventoryManagementSystem
             comboBox1.Show();
             AdatokLekerese.Show();
             Upload_Button.Hide();
+        }
+
+        private void loginToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DataBaseLogin Csatlakozas = new DataBaseLogin();
+            Csatlakozas.Show();
         }
     }
 }
